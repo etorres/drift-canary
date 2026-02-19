@@ -1,36 +1,42 @@
-
-
-
-```shell
-sbt Docker/stage
-```
+# Drift canary
 
 ```shell
-sbt Docker/publishLocal
+sbt "attributionService / Docker / stage"
 ```
 
-
-In domain-driven design (DDD), package names should reflect the domain concepts and bounded contexts. Here are some common DDD-inspired package name suggestions:
-* model or domain.model: For core domain entities and value objects.
-* repository or domain.repository: For repository interfaces and implementations.
-* service or domain.service: For domain services containing business logic.
-* application: For application services, use cases, and orchestration logic.
-* infrastructure: For technical details, adapters, and integrations (e.g., database, HTTP).
-* api or interface: For REST controllers, HTTP endpoints, or external interfaces.
-* config: For configuration classes.
-
-```
-com.yourcompany.yourapp.domain.model
-com.yourcompany.yourapp.domain.repository
-com.yourcompany.yourapp.domain.service
-com.yourcompany.yourapp.application
-com.yourcompany.yourapp.infrastructure
-com.yourcompany.yourapp.api
-com.yourcompany.yourapp.config
-
+```shell
+sbt "attributionService / Docker / publishLocal"
 ```
 
-Choose package names that best match your project's ubiquitous language and bounded contexts.
+```shell
+docker compose up
+```
+
+```shell
+curl http://localhost:8080/healthz
+```
+
+```terminaloutput
+"Attribution Service is live"
+```
+
+```shell
+curl http://localhost:8080/ready
+```
+
+```terminaloutput
+"Attribution Service is ready
+```
+
+```shell
+curl -s http://localhost:8080/api/v1/meta/model | jq .
+```
+
+```json
+{
+  "current_version": "v1"
+}
+```
 
 ## Resources
 

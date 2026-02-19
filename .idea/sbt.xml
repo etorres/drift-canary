@@ -8,6 +8,10 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/modules/attribution-model" />
+            <option value="$PROJECT_DIR$/modules/attribution-service" />
+            <option value="$PROJECT_DIR$/modules/drift-canary" />
+            <option value="$PROJECT_DIR$/modules/test-support" />
             <option value="$PROJECT_DIR$/project" />
           </set>
         </option>

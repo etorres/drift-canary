@@ -1,10 +1,10 @@
 services:
-  drift-canary:
-    image: drift-canary:1.0.0
-    # hostname: drift-canary.test
-    container_name: drift-canary.test
+  attribution-service:
+    image: attribution-service:1.0.0
+    hostname: attribution-service.test
+    container_name: attribution-service.test
     ports:
       - "8080:8080"
     environment:
-      ATTRIBUTION_HTTP_HOST: "0.0.0.0"
+      ATTRIBUTION_HTTP_SERVER_HOST: "0.0.0.0"
     restart: unless-stopped
