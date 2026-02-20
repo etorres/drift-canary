@@ -9,7 +9,7 @@ import munit.CatsEffectSuite
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
 import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.implicits.{path, uri}
+import org.http4s.implicits.uri
 import org.http4s.{Method, Request, Uri}
 import org.typelevel.cats.time.instances.localdate.given
 
@@ -18,7 +18,7 @@ import java.time.LocalDate
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 final class DriftCanarySuite extends CatsEffectSuite:
   withHttpClient()
-    .test("should pick and upload selected events".tag(scheduled)): httpClient =>
+    .test("should pick and upload selected events".tag(scheduled).only): httpClient => // TODO
       selectGoldenInputEvents(httpClient)
 
   private def selectGoldenInputEvents(
@@ -32,7 +32,7 @@ final class DriftCanarySuite extends CatsEffectSuite:
           Request(
             method = Method.GET,
             uri = baseUri
-              .withPath(path"events")
+              .addPath("events")
               .withQueryParam("conversion_action", "purchase_prod")
               .withQueryParam("from", twoDaysAgo.toString)
               .withQueryParam("to", twoDaysAgo.toString)
@@ -52,7 +52,7 @@ final class DriftCanarySuite extends CatsEffectSuite:
         .expect[String]("http://localhost:8080/hello/Ember")
         .assertEquals("123")
 
-  private lazy val baseUri = uri"http://localhost:8080"
+  private lazy val baseUri = uri"http://localhost:8080/api/v1"
 
   private def withHttpClient() =
     ResourceFunFixture:

@@ -3,26 +3,24 @@ package attribution.api
 
 import attribution.api.HealthServiceStub.HealthServiceState
 import attribution.api.RestController
+import attribution.domain.service.*
+import attribution.gen.AttributionGenerators
 import attribution.model.Attribution.ModelVersion
 import attribution.model.AttributionGenerators.attributionGen
 import attribution.model.ConversionInstance.ConversionAction
 import attribution.model.ConversionInstanceGenerators.eventIdGen
 import attribution.model.Event
-import attribution.model.EventGenerators.{conversionActionGen, eventGen}
-import attribution.service.{AttributionService, EventProcessor, EventService}
-import test.gen.CollectionGenerators.{generateNDistinct, splitIntoThreeGroups}
-import test.gen.TemporalGenerators.{instantGen, outOfInstantRange, withinInstantRange}
+import attribution.model.EventGenerators.eventGen
+import attribution.support.AttributionTestRunner
 import test.infrastructure.DeterministicUUIDGen
 import test.infrastructure.DeterministicUUIDGen.UUIDGenState
 
-import cats.collections.Range
 import cats.effect.std.UUIDGen
 import cats.effect.{IO, Ref, Resource}
 import cats.implicits.*
 import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.given
-import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
 import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
 import org.http4s.implicits.uri
 import org.http4s.{EntityDecoder, Method, Request, Response, Status, Uri}
@@ -34,12 +32,10 @@ import org.typelevel.log4cats.StructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.nio.charset.StandardCharsets
-import java.time.temporal.ChronoUnit
-import java.time.{LocalDate, ZoneId}
-import scala.util.Random
+import java.time.ZoneId
 
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-final class AttributionSuite extends CatsEffectSuite with ScalaCheckEffectSuite:
+final class AttributionSuite extends AttributionTestRunner with AttributionGenerators:
   withHttpApp(ModelVersion.v1, testConversionAction)
     .test("should register a new event"): (_, _, _, uuidGenStateRef, httpApp) =>
       forAllNoShrinkF((eventGen(), Gen.uuid).tupled): (event, uuid) =>
@@ -64,75 +60,30 @@ final class AttributionSuite extends CatsEffectSuite with ScalaCheckEffectSuite:
 
   withHttpApp(ModelVersion.v1, testConversionAction)
     .test("should filter events by timestamp"): (_, _, eventService, _, httpApp) =>
-      val timestampRangeGen =
-        for
-          timestamp <- instantGen
-          days <- Gen.choose(1, 7)
-          timestampRange = Range(timestamp, timestamp.plus(days, ChronoUnit.DAYS))
-        yield timestampRange
-      val testCaseGen =
-        for
-          timestampRange <- timestampRangeGen
-          size <- Gen.choose(7, 11)
-          eventIds <- generateNDistinct(size, eventIdGen)
-          (
-            selectedEventIds,
-            outOfRangeEventIds,
-            otherConversionActionEventIds,
-          ) = eventIds.splitIntoThreeGroups
-          selectedEvents <- selectedEventIds.traverse: eventId =>
-            eventGen(
-              eventIdGen = eventId,
-              conversionActionGen = testConversionAction,
-              timestampGen = withinInstantRange(timestampRange),
+      forAllNoShrinkF(filterEventsTestCaseGen(testConversionAction)):
+        case (allEvents, (_, timestampRange, limit), selectedEvents) =>
+          for
+            dateRange = timestampRange.map(_.atZone(ZoneId.of("UTC")).toLocalDate)
+            (minDate, maxDate) = (dateRange.start, dateRange.end)
+            _ <- allEvents.parTraverse_(eventService.record)
+            response <- httpApp.run(
+              Request(
+                method = Method.GET,
+                uri =
+                  Uri.unsafeFromString(show"/api/v1/events?from=$minDate&to=$maxDate&limit=$limit"),
+              ),
             )
-          outOfRangeEvents <- outOfRangeEventIds.traverse: eventId =>
-            eventGen(
-              eventIdGen = eventId,
-              conversionActionGen = testConversionAction,
-              timestampGen = outOfInstantRange(timestampRange),
+            _ <- check(
+              actualResponse = response,
+              expectedStatus = Status.Ok,
+              expectedBody = EventsFilteredByTimestamp(
+                from = minDate,
+                to = maxDate,
+                limit = limit.some,
+                events = selectedEvents.sortBy(_.eventId),
+              ).some,
             )
-          otherConversionActionEvents <- otherConversionActionEventIds.traverse: eventId =>
-            eventGen(
-              eventIdGen = eventId,
-              conversionActionGen = conversionActionGen
-                .retryUntil(_ != testConversionAction),
-              timestampGen = outOfInstantRange(timestampRange),
-            )
-          allEvents = Random.shuffle(
-            selectedEvents ++ outOfRangeEvents ++ otherConversionActionEvents,
-          )
-        yield allEvents -> selectedEvents
-      forAllNoShrinkF(testCaseGen): (allEvents, selectedEvents) =>
-        for
-          _ <- allEvents.parTraverse_(eventService.addIfAbsent)
-          minDate = selectedEvents
-            .minByOption(_.timestamp)
-            .map(_.timestamp.atZone(ZoneId.of("UTC")).toLocalDate)
-            .getOrElse(LocalDate.MAX)
-          maxDate = selectedEvents
-            .maxByOption(_.timestamp)
-            .map(_.timestamp.atZone(ZoneId.of("UTC")).toLocalDate)
-            .getOrElse(LocalDate.MIN)
-          limit = selectedEvents.length
-          response <- httpApp.run(
-            Request(
-              method = Method.GET,
-              uri =
-                Uri.unsafeFromString(show"/api/v1/events?from=$minDate&to=$maxDate&limit=$limit"),
-            ),
-          )
-          _ <- check(
-            actualResponse = response,
-            expectedStatus = Status.Ok,
-            expectedBody = EventsFilteredByTimestamp(
-              from = minDate,
-              to = maxDate,
-              limit = limit.some,
-              events = selectedEvents.sortBy(_.eventId),
-            ).some,
-          )
-        yield ()
+          yield ()
 
   withHttpApp(ModelVersion.v1, testConversionAction)
     .test("should find an assigned attribution"):
@@ -149,8 +100,8 @@ final class AttributionSuite extends CatsEffectSuite with ScalaCheckEffectSuite:
           yield event -> attribution
         forAllNoShrinkF(testCaseGen): (event, attribution) =>
           for
-            _ <- attributionService.addIfAbsent(attribution)
-            _ <- eventService.addIfAbsent(event)
+            _ <- attributionService.record(attribution)
+            _ <- eventService.record(event)
             response <- httpApp.run(
               Request(
                 method = Method.GET,
@@ -168,7 +119,7 @@ final class AttributionSuite extends CatsEffectSuite with ScalaCheckEffectSuite:
     .test("should find a pending attribution"): (_, _, eventService, _, httpApp) =>
       forAllNoShrinkF(eventGen(conversionActionGen = testConversionAction)): event =>
         for
-          _ <- eventService.addIfAbsent(event)
+          _ <- eventService.record(event)
           response <- httpApp.run(
             Request(
               method = Method.GET,
@@ -250,8 +201,10 @@ final class AttributionSuite extends CatsEffectSuite with ScalaCheckEffectSuite:
         for
           logger <- Slf4jLogger.create[IO]
           given StructuredLogger[IO] = logger
-          attributionService <- AttributionService.inMemory
-          eventService <- EventService.inMemory
+          attributionStore <- AttributionStoreStub.inMemory
+          attributionService = AttributionService(attributionStore)
+          eventStore <- EventStoreStub.inMemory
+          eventService = EventService(eventStore)
           healthServiceStatRef <- Ref.of[IO, HealthServiceState](
             HealthServiceState.unready,
           )

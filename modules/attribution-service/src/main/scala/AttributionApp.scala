@@ -2,7 +2,8 @@ package es.eriktorr
 
 import attribution.api.{HealthService, RestController}
 import attribution.config.{AttributionConfig, AttributionParams, HttpServerConfig}
-import attribution.service.{AttributionService, EventProcessor, EventService}
+import attribution.domain.service.{AttributionService, EventProcessor, EventService}
+import attribution.infrastructure.persistence.DatabaseModule
 
 import cats.effect.{ExitCode, IO, Resource}
 import cats.implicits.*
@@ -28,19 +29,31 @@ object AttributionApp
           given StructuredLogger[IO] = logger
           _ <- logger.info(show"Starting application with configuration: $config")
           _ <- (for
+            (eventStore, attributionStore) <- availableProcessors.flatMap:
+              DatabaseModule.make(params.databasePath, _)
             healthService <- HealthService.resourceWith(config.healthConfig)
             httpApp <- Resource.eval:
-              restControllerFrom(healthService, params).flatMap: restController =>
-                MaxActiveRequests
-                  .forHttpApp[IO](config.httpServerConfig.maxActiveRequests)
-                  .map: middleware =>
-                    middleware(restController.httpApp)
-                  .map: decoratedHttpApp =>
-                    Timeout.httpApp[IO](config.httpServerConfig.timeout)(decoratedHttpApp)
+              MaxActiveRequests
+                .forHttpApp[IO](config.httpServerConfig.maxActiveRequests)
+                .map: middleware =>
+                  val restController = restControllerFrom(
+                    EventService(eventStore),
+                    AttributionService(attributionStore),
+                    healthService,
+                    params,
+                  )
+                  middleware(restController.httpApp)
+                .map: decoratedHttpApp =>
+                  Timeout.httpApp[IO](config.httpServerConfig.timeout)(decoratedHttpApp)
             _ <- httpServerFrom(httpApp, config.httpServerConfig)
           yield healthService).use: healthService =>
             healthService.markReady >> IO.never[Unit]
         yield ExitCode.Success
+
+  private def availableProcessors =
+    Resource.eval:
+      IO.delay:
+        Runtime.getRuntime.availableProcessors()
 
   private def httpServerFrom(
       httpApp: HttpApp[IO],
@@ -54,21 +67,19 @@ object AttributionApp
       .build
 
   private def restControllerFrom(
+      eventService: EventService,
+      attributionService: AttributionService,
       healthService: HealthService,
       params: AttributionParams,
   )(using logger: StructuredLogger[IO]) =
-    (
-      AttributionService.inMemory,
-      EventService.inMemory,
-    ).mapN: (attributionService, eventService) =>
-      RestController(
-        attributionService = attributionService,
-        eventService = eventService,
-        eventProcessor = EventProcessor(
-          attributionService,
-          params.modelVersion,
-        ),
-        defaultConversionAction = params.defaultConversionAction,
-        healthService = healthService,
-        enableLogger = params.verbose,
-      )
+    RestController(
+      attributionService = attributionService,
+      eventService = eventService,
+      eventProcessor = EventProcessor(
+        attributionService,
+        params.modelVersion,
+      ),
+      defaultConversionAction = params.defaultConversionAction,
+      healthService = healthService,
+      enableLogger = params.verbose,
+    )

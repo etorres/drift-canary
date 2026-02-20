@@ -1,6 +1,7 @@
 package es.eriktorr
-package attribution.service
+package attribution.domain.service
 
+import attribution.domain.service.AttributionService
 import attribution.logic.AttributionLogic
 import attribution.model.Attribution.ModelVersion
 import attribution.model.{Attribution, Event}
@@ -23,5 +24,5 @@ final class EventProcessor(
           channel = channel,
           modelVersion = modelVersion,
         )
-        _ <- attributionService.addIfAbsent(attribution)
+        _ <- attributionService.record(attribution)
       yield ())).start.void

@@ -2,9 +2,9 @@ package es.eriktorr
 package attribution.api
 
 import attribution.api.RestController.*
+import attribution.domain.service.{AttributionService, EventProcessor, EventService}
 import attribution.model.ConversionInstance.{ConversionAction, EventId}
 import attribution.model.Event
-import attribution.service.{AttributionService, EventProcessor, EventService}
 
 import cats.collections.Range
 import cats.effect.IO
@@ -34,7 +34,7 @@ final class RestController(
         for
           event <- request.as[Event]
           requestId <- uuidGen.randomUUID
-          _ = eventService.addIfAbsent(event)
+          _ = eventService.record(event)
           _ <- eventProcessor.process(event)
           response <- Ok(
             Map(
@@ -53,7 +53,7 @@ final class RestController(
           )
           maxResults = maybeLimit.getOrElse(10)
           conversionAction = maybeConversionAction.getOrElse(defaultConversionAction)
-          events <- eventService.filterBy(conversionAction, timestampRange, maxResults)
+          events <- eventService.query(conversionAction, timestampRange, maxResults)
           response <- Ok(
             EventsFilteredByTimestamp(
               from = fromDate,
@@ -69,8 +69,8 @@ final class RestController(
         for
           conversionAction = maybeConversionAction.getOrElse(defaultConversionAction)
           (maybeEvent, maybeAttribution) <- (
-            eventService.find(conversionAction, eventId),
-            attributionService.find(conversionAction, eventId),
+            eventService.get(conversionAction, eventId),
+            attributionService.get(conversionAction, eventId),
           ).parTupled
           response <- (maybeEvent, maybeAttribution) match
             case (_, Some(attribution)) =>

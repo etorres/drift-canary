@@ -1,7 +1,7 @@
 package es.eriktorr
 package attribution.model
 
-import attribution.refined.Refined.{asNonBlank, fromRefinedString, unsafeFrom}
+import attribution.refined.Refined.{asNonBlank, asValidUUID, fromRefinedString, unsafeFrom}
 import attribution.refined.RefinedError
 
 import cats.implicits.*
@@ -20,9 +20,12 @@ trait ConversionInstance:
 
 object ConversionInstance:
   def conversionInstancePath(
-      conversionAction: ConversionAction,
-      eventId: EventId,
-  ): String = show"$conversionAction/$eventId"
+      conversionId: ConversionId,
+  ): String =
+    val (conversionAction, eventId) = conversionId
+    show"$conversionAction/$eventId"
+
+  type ConversionId = (ConversionAction, EventId)
 
   opaque type ConversionAction <: String = String
 
@@ -46,7 +49,7 @@ object ConversionInstance:
     def fromString(
         value: String,
     ): Either[RefinedError, EventId] =
-      value.asNonBlank("EventId")
+      value.asValidUUID("EventId")
 
     def apply(value: String): EventId =
       value.unsafeFrom(EventId.fromString)

@@ -8,8 +8,8 @@ import cats.{Eq, Show}
 import io.circe.Codec
 
 final case class Attribution(
-    eventId: EventId,
     conversionAction: ConversionAction,
+    eventId: EventId,
     channel: Attribution.Channel,
     modelVersion: Attribution.ModelVersion,
 ) extends ConversionInstance derives Eq, Show, Codec

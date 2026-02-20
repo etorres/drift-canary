@@ -18,6 +18,11 @@ enum RefinedError(val message: String) extends DomainError(message):
         show"$fieldName should be a valid URL path segment, but got: $sanitizedValue",
       )
 
+  case InvalidUUID(fieldName: String, sanitizedValue: String)
+      extends RefinedError(
+        show"$fieldName should be a valid UUID, but got: $sanitizedValue",
+      )
+
 object RefinedError:
   given Show[RefinedError] with
     override def show(

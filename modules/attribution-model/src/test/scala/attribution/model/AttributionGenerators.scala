@@ -14,14 +14,14 @@ object AttributionGenerators extends ConversionInstanceGenerators:
   private val modelVersionGen = Gen.oneOf(Attribution.ModelVersion.values.toSeq)
 
   def attributionGen(
-      eventIdGen: Gen[EventId] = eventIdGen,
       conversionActionGen: Gen[ConversionAction] = conversionActionGen,
+      eventIdGen: Gen[EventId] = eventIdGen,
       channelGen: Gen[Attribution.Channel] = channelGen,
       modelVersionGen: Gen[Attribution.ModelVersion] = modelVersionGen,
   ): Gen[Attribution] =
     (
-      eventIdGen,
       conversionActionGen,
+      eventIdGen,
       channelGen,
       modelVersionGen,
     ).mapN(Attribution.apply)

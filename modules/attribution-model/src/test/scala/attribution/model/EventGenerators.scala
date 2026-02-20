@@ -11,6 +11,7 @@ import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.given
 
 import java.time.Instant
+import scala.math.BigDecimal.RoundingMode
 
 object EventGenerators extends ConversionInstanceGenerators:
   private val userIdGen = alphaNumericStringBetween(4, 12)
@@ -19,19 +20,21 @@ object EventGenerators extends ConversionInstanceGenerators:
 
   private val sourceGen = Gen.oneOf(Event.Source.values.toSeq)
 
-  private val amountGen = Gen.choose(BigDecimal(100), BigDecimal(4000))
+  private val amountGen = Gen
+    .choose(BigDecimal(100), BigDecimal(4000))
+    .map(_.setScale(4, RoundingMode.HALF_UP))
 
   def eventGen(
-      eventIdGen: Gen[EventId] = eventIdGen,
       conversionActionGen: Gen[ConversionAction] = conversionActionGen,
+      eventIdGen: Gen[EventId] = eventIdGen,
       userIdGen: Gen[String] = userIdGen,
       timestampGen: Gen[Instant] = timestampGen,
       sourceGen: Gen[Event.Source] = sourceGen,
       amountGen: Gen[BigDecimal] = amountGen,
   ): Gen[Event] =
     (
-      eventIdGen,
       conversionActionGen,
+      eventIdGen,
       userIdGen,
       timestampGen,
       sourceGen,

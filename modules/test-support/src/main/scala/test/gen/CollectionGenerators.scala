@@ -26,6 +26,14 @@ object CollectionGenerators:
           groups.last.toList,
         )
 
+    def randomlySelectOne: Gen[(A, List[A])] =
+      require(self.nonEmpty, "Cannot select from an empty list")
+      for
+        idx <- Gen.choose(0, self.size - 1)
+        selected = self(idx)
+        rest = self.take(idx) ++ self.drop(idx + 1)
+      yield (selected, rest)
+
   private def splitIntoNGroups[A](
       items: Seq[A],
       n: Int,

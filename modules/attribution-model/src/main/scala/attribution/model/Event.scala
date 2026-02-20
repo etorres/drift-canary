@@ -11,8 +11,8 @@ import org.typelevel.cats.time.instances.instant.given
 import java.time.Instant
 
 final case class Event(
-    eventId: EventId,
     conversionAction: ConversionAction,
+    eventId: EventId,
     userId: String,
     timestamp: Instant,
     source: Event.Source,

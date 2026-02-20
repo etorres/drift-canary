@@ -28,6 +28,8 @@ lazy val warts = Warts.unsafe.filter(_ != Wart.DefaultArguments) ++ contribWarts
 
 lazy val withBaseSettings: Project => Project =
   _.settings(
+    run / javaOptions += "--sun-misc-unsafe-memory-access=allow",
+    Test / javaOptions += "--sun-misc-unsafe-memory-access=allow",
     tpolecatDevModeOptions ++= Set(
       org.typelevel.scalacoptions.ScalacOptions
         .other("-java-output-version", List("25"), _ => true),
@@ -86,6 +88,7 @@ lazy val attributionService =
       libraryDependencies ++= Seq(
         "co.fs2" %% "fs2-io" % "3.12.2",
         "com.comcast" %% "ip4s-core" % "3.7.0",
+        "com.h2database" % "h2" % "2.4.240",
         "com.lmax" % "disruptor" % "3.4.4" % Runtime,
         "com.monovore" %% "decline" % "2.6.0",
         "com.monovore" %% "decline-effect" % "2.6.0",
@@ -99,11 +102,16 @@ lazy val attributionService =
         "org.http4s" %% "http4s-ember-client" % "0.23.33" % Test,
         "org.http4s" %% "http4s-ember-server" % "0.23.33",
         "org.http4s" %% "http4s-server" % "0.23.33",
+        "org.tpolecat" %% "doobie-core" % "1.0.0-RC11",
+        "org.tpolecat" %% "doobie-free" % "1.0.0-RC11",
+        "org.tpolecat" %% "doobie-h2" % "1.0.0-RC11",
+        "org.tpolecat" %% "typename" % "1.1.0",
         "org.typelevel" %% "cats-collections-core" % "0.9.10",
         "org.typelevel" %% "cats-core" % "2.13.0",
         "org.typelevel" %% "cats-effect" % "3.6.3",
         "org.typelevel" %% "cats-effect-kernel" % "3.6.3",
         "org.typelevel" %% "cats-effect-std" % "3.6.3",
+        "org.typelevel" %% "cats-free" % "2.13.0",
         "org.typelevel" %% "cats-kernel" % "2.13.0",
         "org.typelevel" %% "case-insensitive" % "1.5.0",
         "org.typelevel" %% "cats-time" % "0.6.0",
