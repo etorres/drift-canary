@@ -29,10 +29,10 @@ object JdbcTestConfig:
 
   final private val minConnections = 1
 
-  final private val postgresHost = "postgres.local:5432"
+  final private val postgresHost = "localhost:5432"
 
-  final private val postgresPassword = "changeMe"
+  final private val postgresPassword = "s3c4Et"
 
-  final private val postgresUsername = "test"
+  final private val postgresUsername = "attribution"
 
   final private val attributionDatabase = "attribution"

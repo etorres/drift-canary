@@ -38,6 +38,14 @@ curl -s http://localhost:8080/api/v1/meta/model | jq .
 }
 ```
 
+```shell
+act -l push
+```
+
+```shell
+act push -j 'build'
+```
+
 ## Resources
 
 * [MUnit - Scala testing library with actionable errors and extensible APIs](https://scalameta.org/munit/).

@@ -1,18 +1,15 @@
 services:
   postgres:
     image: postgres
-    hostname: postgres.local
     container_name: postgres.local
     ports:
       - "5432:5432"
     environment:
+      POSTGRES_USER: attribution
       POSTGRES_PASSWORD: s3c4Et
-    volumes:
-      - "./modules/attribution-service/src/test/resources/postgres:/docker-entrypoint-initdb.d"
 
   adminer:
     image: adminer
-    hostname: adminer.local
     container_name: adminer.local
     ports:
       - "8082:8080"
@@ -26,8 +23,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      JAVA_OPTS: "-XX:ActiveProcessorCount=2"
       ATTRIBUTION_HTTP_SERVER_HOST: "0.0.0.0"
-      ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://postgres.local:5432/attribution"
-      ATTRIBUTION_JDBC_USERNAME: "test"
-      ATTRIBUTION_JDBC_PASSWORD: "changeMe"
+      ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://localhost:5432/attribution"
+      ATTRIBUTION_JDBC_USERNAME: "attribution"
+      ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
     restart: unless-stopped

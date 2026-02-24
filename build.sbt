@@ -141,6 +141,9 @@ lazy val attributionService =
       dockerBaseImage := "eclipse-temurin:25-jre",
       dockerExposedPorts ++= Seq(8080),
       Docker / maintainer := "https://github.com/etorres/drift-canary",
+      Universal / javaOptions ++= Seq(
+        "-J--sun-misc-unsafe-memory-access=allow",
+      ),
     )
     .dependsOn(attributionModel % "compile->compile;test->test")
     .dependsOn(testSupport % "compile->test")
