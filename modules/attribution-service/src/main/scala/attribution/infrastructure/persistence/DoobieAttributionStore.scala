@@ -2,12 +2,12 @@ package es.eriktorr
 package attribution.infrastructure.persistence
 
 import attribution.domain.service.AttributionStore
+import attribution.infrastructure.persistence.DatabaseExtensions.ignoreDuplicates
 import attribution.model.Attribution
 import attribution.model.ConversionInstance.ConversionId
 
 import cats.effect.IO
-import cats.implicits.*
-import doobie.{ConnectionIO, Transactor}
+import doobie.Transactor
 import doobie.implicits.*
 
 final class DoobieAttributionStore(
@@ -18,8 +18,7 @@ final class DoobieAttributionStore(
       attribution: Attribution,
   ): IO[Unit] =
     sql"""|
-          |MERGE INTO attributions (conversion_action, event_id, channel, model_version)
-          |KEY (conversion_action, event_id)
+          |INSERT INTO attributions (conversion_action, event_id, channel, version)
           |VALUES (
           |  ${attribution.conversionAction},
           |  ${attribution.eventId},
@@ -27,9 +26,7 @@ final class DoobieAttributionStore(
           |  ${attribution.modelVersion}
           |)
           |""".stripMargin.update.run
-      .transact(transactor)
-      .ensure(RuntimeException("Insert failed: affected rows != 1"))(_ == 1)
-      .void
+      .ignoreDuplicates(transactor)
 
   override def findBy(
       conversionId: ConversionId,
@@ -37,7 +34,7 @@ final class DoobieAttributionStore(
     val (conversionAction, eventId) = conversionId
     sql"""|
           |SELECT
-          |  conversion_action, event_id, channel, model_version
+          |  conversion_action, event_id, channel, version
           |FROM attributions
           |WHERE conversion_action = $conversionAction
           |  AND event_id = $eventId
@@ -45,18 +42,3 @@ final class DoobieAttributionStore(
       .query[Attribution]
       .option
       .transact(transactor)
-
-object DoobieAttributionStore:
-  val createAttributionsSchema: ConnectionIO[Int] =
-    sql"""|
-          |CREATE TABLE IF NOT EXISTS attributions (
-          |  conversion_action VARCHAR(32) NOT NULL,
-          |  event_id UUID NOT NULL,
-          |  channel ENUM('Organic','PaidSearch','PaidSocial'),
-          |  model_version ENUM('v1','v2'),
-          |  PRIMARY KEY (conversion_action, event_id),
-          |  FOREIGN KEY (conversion_action, event_id)
-          |    REFERENCES events(conversion_action, event_id)
-          |    ON DELETE CASCADE
-          |)
-          |""".stripMargin.update.run

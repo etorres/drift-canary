@@ -7,10 +7,7 @@ import attribution.model.ConversionInstance.ConversionAction
 import cats.implicits.*
 import com.monovore.decline.Opts
 
-import java.nio.file.Path
-
 final case class AttributionParams(
-    databasePath: Path,
     defaultConversionAction: ConversionAction,
     modelVersion: ModelVersion,
     verbose: Boolean,
@@ -19,9 +16,6 @@ final case class AttributionParams(
 object AttributionParams extends ConversionActionArgument with ModelVersionArgument:
   def opts: Opts[AttributionParams] =
     (
-      Opts.argument[Path](
-        metavar = "database-path",
-      ),
       Opts
         .option[ConversionAction](
           long = "defaultConversionAction",

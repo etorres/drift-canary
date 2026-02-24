@@ -29,8 +29,7 @@ object AttributionApp
           given StructuredLogger[IO] = logger
           _ <- logger.info(show"Starting application with configuration: $config")
           _ <- (for
-            (eventStore, attributionStore) <- availableProcessors.flatMap:
-              DatabaseModule.make(params.databasePath, _)
+            (eventStore, attributionStore) <- DatabaseModule.make(config.jdbcConfig)
             healthService <- HealthService.resourceWith(config.healthConfig)
             httpApp <- Resource.eval:
               MaxActiveRequests
@@ -49,11 +48,6 @@ object AttributionApp
           yield healthService).use: healthService =>
             healthService.markReady >> IO.never[Unit]
         yield ExitCode.Success
-
-  private def availableProcessors =
-    Resource.eval:
-      IO.delay:
-        Runtime.getRuntime.availableProcessors()
 
   private def httpServerFrom(
       httpApp: HttpApp[IO],

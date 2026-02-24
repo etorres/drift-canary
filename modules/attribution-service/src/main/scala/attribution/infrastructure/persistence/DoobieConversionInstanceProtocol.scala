@@ -5,6 +5,9 @@ import attribution.model.ConversionInstance.{ConversionAction, EventId}
 
 import cats.implicits.*
 import doobie.Meta
+import doobie.postgres.implicits.*
+
+import java.util.UUID
 
 trait DoobieConversionInstanceProtocol:
   given Meta[ConversionAction] =
@@ -13,6 +16,4 @@ trait DoobieConversionInstanceProtocol:
     }(identity)
 
   given Meta[EventId] =
-    Meta[String].tiemap { value =>
-      EventId.fromString(value).leftMap(_.getMessage)
-    }(identity)
+    Meta[UUID].imap(EventId.apply)(identity)

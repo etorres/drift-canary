@@ -1,22 +1,18 @@
 package es.eriktorr
 package attribution.support
 
+import attribution.config.JdbcTestConfig
 import attribution.infrastructure.persistence.DatabaseModule
 
-import cats.effect.IO
-import fs2.io.file.Files
-import munit.catseffect.IOFixture
 import munit.AnyFixture
+import munit.catseffect.IOFixture
 import org.scalacheck.Test
 
 abstract class DoobieStoreTestRunner extends AttributionTestRunner:
   protected lazy val persistenceFixture: IOFixture[DatabaseModule.Persistence] =
     ResourceSuiteLocalFixture(
       "doobie-store-test",
-      Files[IO]
-        .tempFile(None, "drift-test-", ".db", None)
-        .flatMap: path =>
-          DatabaseModule.make(path.toNioPath),
+      DatabaseModule.make(JdbcTestConfig.LocalContainer.config),
     )
 
   final override def munitFixtures: Seq[AnyFixture[?]] =

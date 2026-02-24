@@ -3,6 +3,7 @@ package attribution.infrastructure.persistence
 
 import attribution.gen.AttributionGenerators
 import attribution.model.Event
+import attribution.model.EventGenerators.eventGen
 import attribution.support.DoobieStoreTestRunner
 
 import cats.effect.IO
@@ -27,6 +28,14 @@ final class DoobieEventStoreSuite extends DoobieStoreTestRunner with Attribution
           _ <- events.traverse_(eventSource.addIfAbsent)
           obtained <- eventSource.filterBy(conversionAction, timestampRange, limit)
         yield obtained.sortBy(_.eventId)).assertEquals(expected.sortBy(_.eventId))
+
+  test("should ignore duplicated events"):
+    forAllF(eventGen()): event =>
+      (for
+        eventSource <- eventSourceFixture
+        _ <- eventSource.addIfAbsent(event)
+        _ <- eventSource.addIfAbsent(event)
+      yield ()).assert
 
   private def eventSourceFixture =
     IO(persistenceFixture()).map(_.eventStore)

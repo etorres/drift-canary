@@ -3,8 +3,11 @@ package attribution.config
 
 import attribution.config.HealthConfig.{LivenessPath, ReadinessPath, ServiceName}
 import attribution.config.HttpServerConfig.MaxActiveRequests
+import attribution.config.JdbcConfig.{ConnectUrl, Password, Username}
+import attribution.security.Secret
 
 import cats.Show
+import cats.collections.Range
 import cats.derived.*
 import cats.implicits.*
 import com.comcast.ip4s.{Host, Port}
@@ -15,9 +18,14 @@ import scala.concurrent.duration.FiniteDuration
 final case class AttributionConfig(
     healthConfig: HealthConfig,
     httpServerConfig: HttpServerConfig,
+    jdbcConfig: JdbcConfig,
 ) derives Show
 
-object AttributionConfig extends HealthArgument with HttpServerArgument:
+object AttributionConfig
+    extends HealthArgument
+    with HttpServerArgument
+    with JdbcArgument
+    with RangeArgument:
   def opts: Opts[AttributionConfig] =
     val healthConfig =
       (
@@ -69,4 +77,33 @@ object AttributionConfig extends HealthArgument with HttpServerArgument:
           .withDefault(HttpServerConfig.defaultTimeout),
       ).mapN(HttpServerConfig.apply)
 
-    (healthConfig, httpServerConfig).mapN(AttributionConfig.apply)
+    val jdbcConfig =
+      (
+        Opts
+          .env[Range[Int]](
+            name = "ATTRIBUTION_JDBC_CONNECTIONS",
+            help = "Set JDBC connections",
+          )
+          .validate("Must be between 1 and 16")(_.overlaps(Range(1, 16)))
+          .withDefault(Range(1, 3)),
+        Opts.env[ConnectUrl](
+          name = "ATTRIBUTION_JDBC_CONNECT_URL",
+          help = "Set JDBC connect URL",
+        ),
+        Opts
+          .env[Password](
+            name = "ATTRIBUTION_JDBC_PASSWORD",
+            help = "Set JDBC password",
+          )
+          .map(Secret.apply[Password]),
+        Opts.env[Username](
+          name = "ATTRIBUTION_JDBC_USERNAME",
+          help = "Set JDBC username",
+        ),
+      ).mapN(JdbcConfig.apply)
+
+    (
+      healthConfig,
+      httpServerConfig,
+      jdbcConfig,
+    ).mapN(AttributionConfig.apply)

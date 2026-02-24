@@ -6,7 +6,9 @@ import attribution.refined.RefinedError
 
 import cats.implicits.*
 import cats.{Eq, Show}
-import io.circe.Codec
+import io.circe.{Codec, Decoder, Encoder}
+
+import java.util.UUID
 
 trait ConversionInstance:
   val conversionAction: ConversionInstance.ConversionAction
@@ -43,7 +45,7 @@ object ConversionInstance:
     given Codec[ConversionAction] = Codec.fromRefinedString(ConversionAction.fromString)
   end ConversionAction
 
-  opaque type EventId <: String = String
+  opaque type EventId <: UUID = UUID
 
   object EventId:
     def fromString(
@@ -51,10 +53,15 @@ object ConversionInstance:
     ): Either[RefinedError, EventId] =
       value.asValidUUID("EventId")
 
-    def apply(value: String): EventId =
-      value.unsafeFrom(EventId.fromString)
+    def apply(value: UUID): EventId = value
 
     given Eq[EventId] = Eq.fromUniversalEquals
 
-    given Codec[EventId] = Codec.fromRefinedString(EventId.fromString)
+    given Show[EventId] = Show.fromToString
+
+    given Codec[EventId] =
+      Codec.from(
+        Decoder.decodeUUID.map(EventId.apply),
+        Encoder.encodeUUID.contramap(identity),
+      )
   end EventId

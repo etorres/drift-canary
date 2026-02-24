@@ -1,8 +1,28 @@
 services:
+  postgres:
+    image: postgres
+    hostname: postgres.local
+    container_name: postgres.local
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: s3c4Et
+    volumes:
+      - "./modules/attribution-service/src/test/resources/postgres:/docker-entrypoint-initdb.d"
+
+  adminer:
+    image: adminer
+    hostname: adminer.local
+    container_name: adminer.local
+    ports:
+      - "8082:8080"
+
   attribution-service:
     image: attribution-service:1.0.0
-    hostname: attribution-service.test
-    container_name: attribution-service.test
+    hostname: attribution-service.local
+    container_name: attribution-service.local
+    depends_on:
+      - postgres
     ports:
       - "8080:8080"
     environment:

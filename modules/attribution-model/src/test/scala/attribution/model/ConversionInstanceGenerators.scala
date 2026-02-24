@@ -15,8 +15,7 @@ trait ConversionInstanceGenerators:
       .map(ConversionAction.apply)
 
   val eventIdGen: Gen[EventId] =
-    Gen.uuid.map: uuid =>
-      EventId(uuid.toString)
+    Gen.uuid.map(EventId.apply)
 
   def conversionIdGen(
       conversionActionGen: Gen[ConversionAction] = conversionActionGen,

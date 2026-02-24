@@ -1,45 +1,39 @@
 package es.eriktorr
 package attribution.infrastructure.persistence
 
+import attribution.config.JdbcConfig
 import attribution.domain.service.{AttributionStore, EventStore}
 
 import cats.effect.{IO, ResourceIO}
 import cats.implicits.*
-import doobie.h2.H2Transactor
-import doobie.implicits.*
-import doobie.{ExecutionContexts, Transactor}
+import com.zaxxer.hikari.HikariConfig
+import doobie.hikari.HikariTransactor
 
-import java.nio.file.Path
+import scala.concurrent.duration.DurationInt
 
 object DatabaseModule:
   def make(
-      dbPath: Path,
-      poolSize: Int = 2,
+      jdbcConfig: JdbcConfig,
   ): ResourceIO[Persistence] =
-    ExecutionContexts
-      .fixedThreadPool[IO](poolSize)
-      .flatMap: executionContext =>
-        H2Transactor
-          .newH2Transactor[IO](
-            url = show"jdbc:h2:file:${dbPath.toString};DB_CLOSE_DELAY=-1",
-            user = "sa",
-            pass = "",
-            connectEC = executionContext,
-          )
-          .evalTap(initializeSchema)
-          .map: transactor =>
-            (
-              eventStore = DoobieEventStore(transactor),
-              attributionStore = DoobieAttributionStore(transactor),
-            )
-
-  private def initializeSchema(
-      transactor: Transactor[IO],
-  ) =
-    (
-      DoobieEventStore.createEventsSchema,
-      DoobieAttributionStore.createAttributionsSchema,
-    ).mapN(_ + _).transact(transactor).void
+    DatabaseMigrator
+      .make(jdbcConfig)
+      .evalMap(_.migrate)
+      .as:
+        val config = new HikariConfig()
+        config.setJdbcUrl(jdbcConfig.connectUrl)
+        config.setUsername(jdbcConfig.username)
+        config.setPassword(jdbcConfig.password.value)
+        config.setMinimumIdle(jdbcConfig.connections.start)
+        config.setMaximumPoolSize(jdbcConfig.connections.end)
+        config.setLeakDetectionThreshold(2000L)
+        config.setConnectionTimeout(30.seconds.toMillis)
+        config
+      .flatMap(HikariTransactor.fromHikariConfig[IO](_))
+      .map: transactor =>
+        (
+          eventStore = DoobieEventStore(transactor),
+          attributionStore = DoobieAttributionStore(transactor),
+        )
 
   type Persistence = (
       eventStore: EventStore,
