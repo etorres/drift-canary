@@ -17,7 +17,6 @@ addCommandAlias(
   "; undeclaredCompileDependenciesTest; unusedCompileDependenciesTest; scalafixAll; scalafmtSbtCheck; scalafmtCheckAll",
 )
 
-lazy val MUnitFramework = new TestFramework("munit.Framework")
 lazy val contribWarts = Seq(
   ContribWart.MissingOverride,
   ContribWart.OldTime,
@@ -26,28 +25,42 @@ lazy val contribWarts = Seq(
 )
 lazy val warts = Warts.unsafe.filter(_ != Wart.DefaultArguments) ++ contribWarts
 
+lazy val Default = config("default").extend(Test)
+lazy val Scheduled = config("scheduled").extend(Test)
+lazy val Delayed = config("delayed").extend(Test)
+
 lazy val withBaseSettings: Project => Project =
-  _.settings(
-    run / javaOptions += "--sun-misc-unsafe-memory-access=allow",
-    Test / javaOptions += "--sun-misc-unsafe-memory-access=allow",
-    tpolecatDevModeOptions ++= Set(
-      org.typelevel.scalacoptions.ScalacOptions.javaOutputVersion("25"),
-      org.typelevel.scalacoptions.ScalacOptions.warnError,
-      org.typelevel.scalacoptions.ScalacOptions.warnSafeInit,
-      org.typelevel.scalacoptions.ScalacOptions.privateExplicitNulls,
-    ),
-    tpolecatExcludeOptions ++= Set(
-      org.typelevel.scalacoptions.ScalacOptions.fatalWarnings,
-    ),
-    Compile / compile / wartremoverErrors ++= warts,
-    Test / compile / wartremoverErrors ++= warts,
-    Compile / doc / sources := Seq(),
-    Test / envVars := Map(
-      "SBT_TEST_ENV_VARS" -> "true",
-    ),
-    Test / testOptions += Tests.Argument(MUnitFramework, "--exclude-tags=delayed,scheduled"),
-    Test / logBuffered := false,
-  )
+  _.configs(Default, Scheduled, Delayed)
+    .settings(
+      run / javaOptions += "--sun-misc-unsafe-memory-access=allow",
+      Test / javaOptions += "--sun-misc-unsafe-memory-access=allow",
+      tpolecatDevModeOptions ++= Set(
+        org.typelevel.scalacoptions.ScalacOptions.javaOutputVersion("25"),
+        org.typelevel.scalacoptions.ScalacOptions.warnError,
+        org.typelevel.scalacoptions.ScalacOptions.warnSafeInit,
+        org.typelevel.scalacoptions.ScalacOptions.privateExplicitNulls,
+      ),
+      tpolecatExcludeOptions ++= Set(
+        org.typelevel.scalacoptions.ScalacOptions.fatalWarnings,
+      ),
+      Compile / compile / wartremoverErrors ++= warts,
+      Test / compile / wartremoverErrors ++= warts,
+      Compile / doc / sources := Seq(),
+      Test / envVars := Map(
+        "SBT_TEST_ENV_VARS" -> "true",
+      ),
+      testFrameworks += TestFrameworks.MUnit,
+      inConfig(Default)(Defaults.testTasks),
+      inConfig(Scheduled)(Defaults.testTasks),
+      inConfig(Delayed)(Defaults.testTasks),
+      Default / testOptions +=
+        Tests.Argument(TestFrameworks.MUnit, "--exclude-tags=scheduled,delayed"),
+      Scheduled / testOptions +=
+        Tests.Argument(TestFrameworks.MUnit, "--include-tags=scheduled"),
+      Delayed / testOptions +=
+        Tests.Argument(TestFrameworks.MUnit, "--include-tags=delayed"),
+      Test / logBuffered := false,
+    )
 
 lazy val withMunitCatsEffect: Project => Project =
   withBaseSettings.compose(
@@ -69,6 +82,7 @@ lazy val attributionModel =
       name := "attribution-model",
       libraryDependencies ++= Seq(
         "io.circe" %% "circe-core" % "0.14.15",
+        "org.slf4j" % "slf4j-nop" % "1.7.36" % Test,
         "org.typelevel" %% "cats-collections-core" % "0.9.10",
         "org.typelevel" %% "cats-core" % "2.13.0",
         "org.typelevel" %% "cats-kernel" % "2.13.0",

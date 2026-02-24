@@ -18,7 +18,7 @@ services:
       - "8082:8080"
 
   attribution-service:
-    image: attribution-service:1.0.0
+    image: ghcr.io/etorres/attribution-service:1.0.0
     hostname: attribution-service.local
     container_name: attribution-service.local
     depends_on:
@@ -27,4 +27,7 @@ services:
       - "8080:8080"
     environment:
       ATTRIBUTION_HTTP_SERVER_HOST: "0.0.0.0"
+      ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://postgres.local:5432/attribution"
+      ATTRIBUTION_JDBC_USERNAME: "test"
+      ATTRIBUTION_JDBC_PASSWORD: "changeMe"
     restart: unless-stopped
