@@ -51,3 +51,4 @@ act push -j 'build'
 * [MUnit - Scala testing library with actionable errors and extensible APIs](https://scalameta.org/munit/).
 * [munit-cats-effect - Integration library for MUnit and cats-effect](https://typelevel.org/munit-cats-effect/).
 * [scalacheck-effect - Effectful property testing built on ScalaCheck](https://github.com/typelevel/scalacheck-effect).
+* [act - Usage guide](https://nektosact.com/usage/index.html).

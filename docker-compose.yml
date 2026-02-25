@@ -4,6 +4,12 @@ services:
     container_name: postgres.local
     ports:
       - "5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "--host", "localhost", "-U", "attribution" ]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     environment:
       POSTGRES_USER: attribution
       POSTGRES_PASSWORD: s3c4Et
@@ -15,17 +21,18 @@ services:
       - "8082:8080"
 
   attribution-service:
-    image: ghcr.io/etorres/attribution-service:1.0.0
+    image: ghcr.io/etorres/drift-canary/attribution-service:dev
     hostname: attribution-service.local
     container_name: attribution-service.local
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
       JAVA_OPTS: "-XX:ActiveProcessorCount=2"
       ATTRIBUTION_HTTP_SERVER_HOST: "0.0.0.0"
-      ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://localhost:5432/attribution"
+      ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://postgres.local:5432/attribution"
       ATTRIBUTION_JDBC_USERNAME: "attribution"
       ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
     restart: unless-stopped

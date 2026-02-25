@@ -17,6 +17,14 @@ addCommandAlias(
   "; undeclaredCompileDependenciesTest; unusedCompileDependenciesTest; scalafixAll; scalafmtSbtCheck; scalafmtCheckAll",
 )
 
+lazy val githubRepo = settingKey[String]("GitHub repo for docker image")
+
+ThisBuild / githubRepo :=
+  sys.env.getOrElse(
+    "GITHUB_REPOSITORY",
+    "etorres/drift-canary",
+  )
+
 lazy val contribWarts = Seq(
   ContribWart.MissingOverride,
   ContribWart.OldTime,
@@ -94,7 +102,7 @@ lazy val attributionModel =
 
 lazy val attributionService =
   (project in file("modules/attribution-service"))
-    .enablePlugins(DockerPlugin, JavaAppPackaging)
+    .enablePlugins(JavaAppPackaging, DockerPlugin)
     .configure(withMunitCatsEffect)
     .settings(
       name := "attribution-service",
@@ -136,10 +144,36 @@ lazy val attributionService =
         "org.typelevel" %% "log4cats-core" % "2.7.1",
         "org.typelevel" %% "log4cats-slf4j" % "2.7.1",
       ),
-      dockerRepository := Some("ghcr.io/etorres"),
+      dockerAliases ++= {
+        val repo = dockerRepository.value.getOrElse("")
+        val name = packageName.value
+        val sha = sys.env.getOrElse("GITHUB_SHA", "dev")
+        val isMain = sys.env.get("GITHUB_REF").contains("refs/heads/main")
+        val shaAlias = DockerAlias(
+          registryHost = Some("ghcr.io"),
+          username = Some(githubRepo.value),
+          name = name,
+          tag = Some(sha),
+        )
+        val latestAlias = DockerAlias(
+          registryHost = Some("ghcr.io"),
+          username = Some(githubRepo.value),
+          name = name,
+          tag = Some("latest"),
+        )
+        if (isMain) Seq(shaAlias, latestAlias) else Seq(shaAlias)
+      },
       dockerApiVersion := com.typesafe.sbt.packager.docker.DockerApiVersion.parse("1.53"),
-      dockerBaseImage := "eclipse-temurin:25-jre",
+      dockerBaseImage := "eclipse-temurin:25-jre@sha256:0a9c973778b03b88f39ccae4f8cc26022d84a3237a818cb98770369eb6c5daf9",
       dockerExposedPorts ++= Seq(8080),
+      dockerGroupLayers := {
+        case (_, path) if path.contains("/lib/") => 0
+        case (_, path) if path.contains("/conf/") => 1
+        case _ => 2
+      },
+      dockerPermissionStrategy := com.typesafe.sbt.packager.docker.DockerPermissionStrategy.MultiStage,
+      dockerRepository := Some("ghcr.io/" + githubRepo.value),
+      dockerUpdateLatest := false,
       Docker / maintainer := "https://github.com/etorres/drift-canary",
       Universal / javaOptions ++= Seq(
         "-J--sun-misc-unsafe-memory-access=allow",

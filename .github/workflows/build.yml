@@ -1,0 +1,61 @@
+name: Build Attribution Service
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: attribution
+          POSTGRES_PASSWORD: s3c4Et
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
+      - name: Log in to GHCR
+        if: ${{ !env.ACT }} # skip during local actions testing
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login $REGISTRY -u ${{ github.actor }} --password-stdin
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Build attribution-service image
+        run: |
+          sbt -v -Dfile.encoding=UTF-8 +check Default/test
+          sbt "attributionService / Docker / stage"
+          sbt "attributionService / Docker / publish"
+        env:
+          JAVA_OPTS: -Xms2048M -Xmx4096M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+          JVM_OPTS: -Xms2048M -Xmx4096M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+          DOCKER_BUILDKIT: 1
