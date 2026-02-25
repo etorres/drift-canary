@@ -210,6 +210,7 @@ lazy val testSupport =
         "org.scalacheck" %% "scalacheck" % "1.19.0",
         "org.scalameta" %% "munit" % "1.2.2",
         "org.typelevel" %% "cats-collections-core" % "0.9.10",
+        "org.typelevel" %% "cats-core" % "2.13.0",
         "org.typelevel" %% "cats-effect" % "3.6.3",
         "org.typelevel" %% "cats-effect-kernel" % "3.6.3",
         "org.typelevel" %% "cats-effect-std" % "3.6.3",

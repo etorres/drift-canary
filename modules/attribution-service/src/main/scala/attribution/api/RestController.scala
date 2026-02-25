@@ -80,6 +80,19 @@ final class RestController(
             case _ => NotFound()
         yield response
 
+      case request @ POST -> Root / "admin" / "snapshot" =>
+        for
+          snapshot <- request.as[SystemSnapshot]
+          insertedEvents <- snapshot.events.traverse(eventService.record)
+          insertedAttributions <- snapshot.attributions.traverse(attributionService.record)
+          response <- Ok(
+            Map(
+              "events_loaded" -> insertedEvents.length,
+              "attributions_loaded" -> insertedAttributions.length,
+            ),
+          )
+        yield response
+
       case GET -> Root / "meta" / "model" =>
         Ok(Map("current_version" -> eventProcessor.modelVersion.show))
 

@@ -34,7 +34,7 @@ object CollectionGenerators:
         rest = self.take(idx) ++ self.drop(idx + 1)
       yield (selected, rest)
 
-  private def splitIntoNGroups[A](
+  def splitIntoNGroups[A](
       items: Seq[A],
       n: Int,
   ): Seq[Seq[A]] =

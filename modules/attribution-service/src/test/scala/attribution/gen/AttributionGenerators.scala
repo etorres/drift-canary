@@ -1,6 +1,7 @@
 package es.eriktorr
 package attribution.gen
 
+import attribution.api.SystemSnapshot
 import attribution.model.AttributionGenerators.attributionGen
 import attribution.model.ConversionInstance.{ConversionAction, ConversionId}
 import attribution.model.ConversionInstanceGenerators.{
@@ -113,6 +114,23 @@ trait AttributionGenerators:
       filter = (conversionAction, dateRange, limit),
       expected = selectedEvents,
     )
+
+  val systemSnapshotTestCaseGen: Gen[SystemSnapshot] =
+    for
+      size <- Gen.choose(1, 7)
+      eventIds <- generateNDistinct(size, eventIdGen)
+      events <- eventIds.traverse: eventId =>
+        eventGen(eventIdGen = eventId)
+      eventsWithAttribution <- events.traverse: event =>
+        attributionGen(
+          conversionActionGen = event.conversionAction,
+          eventIdGen = event.eventId,
+        ).map(event -> _)
+      systemSnapshot = SystemSnapshot(
+        events = eventsWithAttribution.map(_._1),
+        attributions = eventsWithAttribution.map(_._2),
+      )
+    yield systemSnapshot
 
   private def attributionGenFor(
       conversionId: ConversionId,

@@ -21,7 +21,7 @@ import cats.implicits.*
 import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.given
-import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
+import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.implicits.uri
 import org.http4s.{EntityDecoder, Method, Request, Response, Status, Uri}
 import org.scalacheck.cats.implicits.given
@@ -150,6 +150,26 @@ final class AttributionSuite extends AttributionTestRunner with AttributionGener
                 expectedStatus = Status.NotFound,
                 expectedBody = Option.empty[String],
               )
+
+  withHttpApp(ModelVersion.v1, testConversionAction)
+    .test("should load a system snapshot through the admin endpoint"): (_, _, _, _, httpApp) =>
+      forAllNoShrinkF(systemSnapshotTestCaseGen): systemSnapshot =>
+        httpApp
+          .run(
+            Request(
+              method = Method.POST,
+              uri = uri"/api/v1/admin/snapshot",
+            ).withEntity(systemSnapshot),
+          )
+          .flatMap: response =>
+            check(
+              actualResponse = response,
+              expectedStatus = Status.Ok,
+              expectedBody = Map(
+                "events_loaded" -> systemSnapshot.events.length,
+                "attributions_loaded" -> systemSnapshot.attributions.length,
+              ).some,
+            )
 
   withHttpApp(ModelVersion.v1, testConversionAction)
     .test("should get the current model version"): (modelVersion, _, _, _, httpApp) =>

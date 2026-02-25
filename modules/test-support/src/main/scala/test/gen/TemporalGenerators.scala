@@ -4,7 +4,7 @@ package test.gen
 import cats.collections.Range
 import com.fortysevendeg.scalacheck.datetime.GenDateTime.genDateTimeWithinRange
 import com.fortysevendeg.scalacheck.datetime.instances.jdk8.jdk8Instant
-import com.fortysevendeg.scalacheck.datetime.jdk8.ArbitraryJdk8.arbInstantJdk8
+import com.fortysevendeg.scalacheck.datetime.jdk8.ArbitraryJdk8.{arbInstantJdk8, arbLocalDateJdk8}
 import com.fortysevendeg.scalacheck.datetime.jdk8.granularity.seconds as zonedDateTimeSeconds
 import com.fortysevendeg.scalacheck.datetime.{Granularity, YearRange}
 import org.scalacheck.Gen
@@ -28,6 +28,12 @@ object TemporalGenerators:
 
   val instantGen: Gen[Instant] =
     arbInstantJdk8(using
+      granularity = zonedDateTimeSeconds,
+      yearRange = yearRange,
+    ).arbitrary
+
+  val localDateGen: Gen[LocalDate] =
+    arbLocalDateJdk8(using
       granularity = zonedDateTimeSeconds,
       yearRange = yearRange,
     ).arbitrary
