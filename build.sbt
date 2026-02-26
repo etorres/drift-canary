@@ -189,6 +189,8 @@ lazy val driftCanary =
       name := "drift-canary",
       libraryDependencies ++= Seq(
         "io.circe" %% "circe-core" % "0.14.15",
+        "org.gnieh" %% "fs2-data-json" % "1.12.0" % Test,
+        "org.gnieh" %% "fs2-data-json-circe" % "1.12.0" % Test,
         "org.http4s" %% "http4s-circe" % "0.23.33" % Test,
         "org.http4s" %% "http4s-ember-client" % "0.23.33" % Test,
         "org.typelevel" %% "cats-core" % "2.13.0",
