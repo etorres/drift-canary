@@ -128,7 +128,7 @@ final class AttributionSuite extends AttributionTestRunner with AttributionGener
           )
           _ <- check(
             actualResponse = response,
-            expectedStatus = Status.Ok,
+            expectedStatus = Status.Accepted,
             expectedBody = Map("status" -> AttributionResult.Status.Pending.show).some,
           )
         yield ()
@@ -200,7 +200,8 @@ final class AttributionSuite extends AttributionTestRunner with AttributionGener
         "Response status",
       )
       actualBody <- (actualStatus match
-        case Status.Ok => actualResponse.as[A].map(_.some)
+        case Status.Ok | Status.Accepted =>
+          actualResponse.as[A].map(_.some)
         case _ => IO(Option.empty[A])
       ).assertEquals(expectedBody, "Response body")
     yield ()

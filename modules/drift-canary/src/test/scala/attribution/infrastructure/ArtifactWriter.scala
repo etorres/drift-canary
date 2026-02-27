@@ -10,7 +10,7 @@ import io.circe.{Encoder, Json}
 
 import java.nio.file.Paths as JPaths
 
-abstract class ArtifactWriter[A: Encoder]:
+trait ArtifactWriter[A: Encoder]:
   val artifactPath: String
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))

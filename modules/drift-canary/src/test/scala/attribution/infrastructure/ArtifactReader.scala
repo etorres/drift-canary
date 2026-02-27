@@ -1,7 +1,7 @@
 package es.eriktorr
 package attribution.infrastructure
 
-import attribution.infrastructure.ArtifactReader.*
+import attribution.infrastructure.ArtifactReader.{ensureExists, ensureNonEmpty, read, readNonEmpty}
 
 import cats.data.NonEmptyList
 import cats.effect.IO
@@ -16,7 +16,7 @@ import java.io.FileNotFoundException
 import java.nio.file.Paths as JPaths
 import scala.reflect.ClassTag
 
-abstract class ArtifactReader[A: {ClassTag, Decoder}]:
+trait ArtifactReader[A: {ClassTag, Decoder}]:
   val artifactPath: String
 
   final def readAll: IO[List[A]] =

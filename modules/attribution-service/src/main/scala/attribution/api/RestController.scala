@@ -12,6 +12,7 @@ import cats.effect.std.UUIDGen
 import cats.implicits.*
 import org.http4s.circe.CirceEntityCodec.given
 import org.http4s.dsl.io.*
+import org.http4s.headers.`Retry-After`
 import org.http4s.server.Router
 import org.http4s.server.middleware.Logger as Http4sLogger
 import org.http4s.{HttpApp, HttpRoutes, ParseFailure, QueryParamCodec, QueryParamDecoder, Response}
@@ -19,6 +20,7 @@ import org.typelevel.log4cats.StructuredLogger
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalTime, ZoneOffset}
+import scala.concurrent.duration.DurationInt
 
 final class RestController(
     attributionService: AttributionService,
@@ -76,7 +78,10 @@ final class RestController(
             case (_, Some(attribution)) =>
               Ok(AttributionResult.completedFrom(attribution))
             case (Some(_), None) =>
-              Ok(Map("status" -> AttributionResult.Status.Pending.show))
+              Accepted(
+                Map("status" -> AttributionResult.Status.Pending.show),
+                `Retry-After`.unsafeFromDuration(60.seconds),
+              )
             case _ => NotFound()
         yield response
 

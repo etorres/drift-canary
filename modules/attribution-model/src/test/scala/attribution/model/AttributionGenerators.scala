@@ -11,7 +11,8 @@ import org.scalacheck.cats.implicits.given
 object AttributionGenerators extends ConversionInstanceGenerators:
   private val channelGen = Gen.oneOf(Attribution.Channel.values.toSeq)
 
-  private val modelVersionGen = Gen.oneOf(Attribution.ModelVersion.values.toSeq)
+  val modelVersionGen: Gen[Attribution.ModelVersion] =
+    Gen.oneOf(Attribution.ModelVersion.values.toSeq)
 
   def attributionGen(
       conversionActionGen: Gen[ConversionAction] = conversionActionGen,
