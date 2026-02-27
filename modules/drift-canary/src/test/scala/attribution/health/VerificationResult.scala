@@ -11,7 +11,7 @@ import java.time.LocalDate
 final case class VerificationResult(
     date: LocalDate,
     expectedCount: Int,
-    actualCount: Double,
+    actualCount: Int,
     minimumSuccessThreshold: Double,
     successRate: Double,
     status: VerificationResult.Status,

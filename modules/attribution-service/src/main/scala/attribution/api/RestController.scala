@@ -85,9 +85,10 @@ final class RestController(
             case _ => NotFound()
         yield response
 
-      case request @ POST -> Root / "admin" / "snapshot" =>
+      case request @ POST -> Root / "admin" / "snapshot" :? Truncate(truncate) =>
         for
           snapshot <- request.as[SystemSnapshot]
+          _ <- attributionService.truncate.whenA(truncate)
           insertedEvents <- snapshot.events.traverse(eventService.record)
           insertedAttributions <- snapshot.attributions.traverse(attributionService.record)
           response <- Ok(
@@ -157,3 +158,5 @@ object RestController:
 
   private object OptionalConversionAction
       extends OptionalQueryParamDecoderMatcher[ConversionAction]("conversion_action")
+
+  private object Truncate extends FlagQueryParamMatcher("truncate")

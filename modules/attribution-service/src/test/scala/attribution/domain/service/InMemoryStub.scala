@@ -32,3 +32,5 @@ abstract class InMemoryStub[A <: ConversionInstance](
         conversionId,
       )
     mapRef(conversionInstancePath).get
+
+  final def truncate: IO[Unit] = IO.unit

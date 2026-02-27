@@ -15,27 +15,27 @@ final class DoobieEventStoreSuite extends DoobieStoreTestRunner with Attribution
     forAllF(findEventTestCaseGen):
       case (events, conversionId, expected) =>
         (for
-          eventSource <- eventSourceFixture
-          _ <- events.traverse_(eventSource.addIfAbsent)
-          obtained <- eventSource.findBy(conversionId)
+          eventStore <- eventStoreFixture
+          _ <- events.traverse_(eventStore.addIfAbsent)
+          obtained <- eventStore.findBy(conversionId)
         yield obtained).assertEquals(expected)
 
   test("should filter events by conversion action and timestamp"):
     forAllF(filterEventsTestCaseGen()):
       case (events, (conversionAction, timestampRange, limit), expected) =>
         (for
-          eventSource <- eventSourceFixture
-          _ <- events.traverse_(eventSource.addIfAbsent)
-          obtained <- eventSource.filterBy(conversionAction, timestampRange, limit)
+          eventStore <- eventStoreFixture
+          _ <- events.traverse_(eventStore.addIfAbsent)
+          obtained <- eventStore.filterBy(conversionAction, timestampRange, limit)
         yield obtained.sortBy(_.eventId)).assertEquals(expected.sortBy(_.eventId))
 
   test("should ignore duplicated events"):
     forAllF(eventGen()): event =>
       (for
-        eventSource <- eventSourceFixture
-        _ <- eventSource.addIfAbsent(event)
-        _ <- eventSource.addIfAbsent(event)
+        eventStore <- eventStoreFixture
+        _ <- eventStore.addIfAbsent(event)
+        _ <- eventStore.addIfAbsent(event)
       yield ()).assert
 
-  private def eventSourceFixture =
+  private def eventStoreFixture =
     IO(persistenceFixture()).map(_.eventStore)

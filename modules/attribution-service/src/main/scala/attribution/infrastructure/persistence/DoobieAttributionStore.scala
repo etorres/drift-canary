@@ -42,3 +42,8 @@ final class DoobieAttributionStore(
       .query[Attribution]
       .option
       .transact(transactor)
+
+  override def truncate: IO[Unit] =
+    sql"TRUNCATE TABLE attributions CASCADE".update.run
+      .transact(transactor)
+      .void

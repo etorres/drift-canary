@@ -210,7 +210,7 @@ lazy val testSupport =
       libraryDependencies ++= Seq(
         "com.47deg" %% "scalacheck-toolbox-datetime" % "0.7.0",
         "org.scalacheck" %% "scalacheck" % "1.19.0",
-        "org.scalameta" %% "munit" % "1.2.2",
+        "org.scalameta" %% "munit" % "1.2.3",
         "org.typelevel" %% "cats-collections-core" % "0.9.10",
         "org.typelevel" %% "cats-core" % "2.13.0",
         "org.typelevel" %% "cats-effect" % "3.6.3",

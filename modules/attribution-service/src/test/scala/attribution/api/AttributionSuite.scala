@@ -158,7 +158,7 @@ final class AttributionSuite extends AttributionTestRunner with AttributionGener
           .run(
             Request(
               method = Method.POST,
-              uri = uri"/api/v1/admin/snapshot",
+              uri = uri"/api/v1/admin/snapshot?truncate",
             ).withEntity(systemSnapshot),
           )
           .flatMap: response =>

@@ -2,11 +2,11 @@ package es.eriktorr
 package attribution.infrastructure.persistence
 
 import attribution.gen.AttributionGenerators
+import attribution.model.AttributionGenerators.attributionGen
 import attribution.support.DoobieStoreTestRunner
 
 import cats.effect.IO
 import cats.implicits.*
-import es.eriktorr.attribution.model.AttributionGenerators.attributionGen
 import org.scalacheck.effect.PropF.forAllF
 
 final class DoobieAttributionStoreSuite extends DoobieStoreTestRunner with AttributionGenerators:
@@ -27,6 +27,17 @@ final class DoobieAttributionStoreSuite extends DoobieStoreTestRunner with Attri
         _ <- attributionStore.addIfAbsent(attribution)
         _ <- attributionStore.addIfAbsent(attribution)
       yield ()).assert
+
+  test("should truncate all data"):
+    forAllF(findAttributionTestCaseGen):
+      case ((events, attributions), conversionId, expected) =>
+        (for
+          (eventStore, attributionStore) <- IO(persistenceFixture())
+          _ <- events.traverse_(eventStore.addIfAbsent)
+          _ <- attributions.traverse_(attributionStore.addIfAbsent)
+          _ <- attributionStore.truncate
+          obtained <- attributionStore.findBy(conversionId)
+        yield obtained).assert(_.isEmpty)
 
   private def attributionStoreFixture =
     IO(persistenceFixture()).map(_.attributionStore)

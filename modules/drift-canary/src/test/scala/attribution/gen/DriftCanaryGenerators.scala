@@ -4,7 +4,7 @@ package attribution.gen
 import attribution.client.{AttributionResult, SystemSnapshot}
 import attribution.logic.AttributionLogic
 import attribution.model.Attribution
-import attribution.model.AttributionGenerators.modelVersionGen
+import attribution.model.AttributionGenerators.{channelGen, modelVersionGen}
 import attribution.model.ConversionInstance.{ConversionAction, EventId}
 import attribution.model.EventGenerators.{eventGen, eventIdGen}
 import test.gen.CollectionGenerators.{generateNDistinct, splitIntoNGroups}
@@ -21,11 +21,11 @@ import org.http4s.implicits.uri
 import org.http4s.{Method, Request, Uri}
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.given
-import org.scalacheck.rng.Seed
 
 import java.time.{LocalDate, LocalTime, ZoneOffset}
 import java.util.stream.Collectors as JCollectors
 import scala.jdk.CollectionConverters.given
+import scala.util.Random
 
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 trait DriftCanaryGenerators:
@@ -59,15 +59,23 @@ trait DriftCanaryGenerators:
   ): IO[Unit] =
     val systemSnapshot: SystemSnapshot =
       (for
-        eventsWithAttribution <- attributions.traverse:
-          eventWithAttributionGen(conversionAction, _)
+        driftRate <- Gen
+          .choose(0d, .5d)
+          .map: driftRate =>
+            (attributions.length * driftRate).toInt
+        attributionsWithDrift =
+          attributions.zipWithIndex.map: (attribution, idx) =>
+            (attribution, idx < driftRate)
+        eventsWithAttribution <-
+          Random
+            .shuffle(attributionsWithDrift)
+            .traverse: (attribution, drift) =>
+              eventWithAttributionGen(conversionAction, attribution, drift)
         systemSnapshot = SystemSnapshot(
           events = eventsWithAttribution.map(_._1),
           attributions = eventsWithAttribution.map(_._2),
         )
-      yield systemSnapshot).sampleWithSeed(
-        seed = Seed.fromBase64("qHprEs3_G6qTccS-5AjG-6StBVHvJcwfebFNUk2ntpF=").toOption,
-      ) // TODO
+      yield systemSnapshot).sampleWithSeed()
     loadSnapshot(systemSnapshot, httpClient)
 
   private def datesBetween(
@@ -90,7 +98,7 @@ trait DriftCanaryGenerators:
       .expect(
         Request[IO](
           method = Method.POST,
-          uri = uri"http://localhost:8080/api/v1/admin/snapshot",
+          uri = uri"http://localhost:8080/api/v1/admin/snapshot?truncate",
         ).withEntity(systemSnapshot),
       )(using jsonOf[IO, Map[String, Int]])
       .ensureOr(response =>
@@ -136,16 +144,31 @@ trait DriftCanaryGenerators:
   private def eventWithAttributionGen(
       conversionAction: ConversionAction,
       attributionResult: AttributionResult,
+      drift: Boolean,
   ) =
     for
       event <- eventGen(
         conversionActionGen = conversionAction,
         eventIdGen = attributionResult.eventId,
       )
+      (channel, modelVersion) <-
+        if drift
+        then
+          (
+            channelGen.retryUntil(_ != attributionResult.attribution.channel),
+            modelVersionGen.retryUntil(_ != attributionResult.attribution.modelVersion),
+          ).tupled
+        else
+          Gen.const(
+            (
+              attributionResult.attribution.channel,
+              attributionResult.attribution.modelVersion,
+            ),
+          )
       attribution = Attribution(
         conversionAction = conversionAction,
         eventId = event.eventId,
-        channel = attributionResult.attribution.channel,
-        modelVersion = attributionResult.attribution.modelVersion,
+        channel = channel,
+        modelVersion = modelVersion,
       )
     yield event -> attribution

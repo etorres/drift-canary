@@ -33,7 +33,7 @@ final class DriftCanarySuite extends DriftCanaryTestRunner with DriftCanaryGener
       yield ()).assert
 
   withHttpClient(Stage.Verifier)
-    .test("should check attributions".tag(delayed).only): httpClient =>
+    .test("should check attributions".tag(delayed).only): httpClient => // TODO: Remove only
       (for
         sampleAttributions <-
           ArtifactReader[AttributionResult](attributionsSamplesPath).readNonEmpty
