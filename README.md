@@ -1,5 +1,11 @@
 # Drift canary
 
+Drift Canary is a Scala-based integration testing system that continuously validates conversion attribution across environments.
+
+It replays real production events into a test conversion action and verifies attribution consistency over time.
+
+Designed for CI/CD, it detects attribution drift before it impacts reporting or revenue.
+
 ```shell
 sbt "attributionService / Docker / stage"
 ```
