@@ -5,6 +5,7 @@ import attribution.client.{AttributionResult, EventsFilteredByTimestamp}
 import attribution.model.ConversionInstance.{ConversionAction, ConversionId, EventId}
 import attribution.model.Event
 import attribution.support.DriftCanaryTestRunner.{EventWithAttribution, given}
+import attribution.util.AttributionBaseUrl
 
 import cats.effect.IO
 import cats.implicits.*
@@ -12,8 +13,7 @@ import munit.CatsEffectSuite
 import org.http4s.circe.CirceEntityCodec.given
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
-import org.http4s.implicits.uri
-import org.http4s.{Method, QueryParamEncoder, Request, Status, Uri}
+import org.http4s.{Method, QueryParamEncoder, Request, Status}
 import org.typelevel.cats.time.instances.localdate.given
 
 import java.time.LocalDate
@@ -56,20 +56,21 @@ trait DriftCanaryTestRunner extends CatsEffectSuite:
       date: LocalDate,
       limit: Int,
   ) =
-    httpClient
-      .expect(
-        Request(
-          method = Method.GET,
-          uri = baseUri
-            .addPath("events")
-            .withQueryParam("conversion_action", conversionAction)
-            .withQueryParam("from", date.toString)
-            .withQueryParam("to", date.toString)
-            .withQueryParam("limit", limit),
-        ),
-      )(using jsonOf[IO, EventsFilteredByTimestamp])
-      .map(_.events)
-      .ensure(RuntimeException(show"No events found for the date: $date"))(_.nonEmpty)
+    AttributionBaseUrl.getBaseUrl.flatMap: baseUrl =>
+      httpClient
+        .expect(
+          Request(
+            method = Method.GET,
+            uri = baseUrl
+              .addPath("events")
+              .withQueryParam("conversion_action", conversionAction)
+              .withQueryParam("from", date.toString)
+              .withQueryParam("to", date.toString)
+              .withQueryParam("limit", limit),
+          ),
+        )(using jsonOf[IO, EventsFilteredByTimestamp])
+        .map(_.events)
+        .ensure(RuntimeException(show"No events found for the date: $date"))(_.nonEmpty)
 
   private def attributionFor(
       event: Event,
@@ -84,15 +85,16 @@ trait DriftCanaryTestRunner extends CatsEffectSuite:
       httpClient: Client[IO],
   ): IO[List[Unit]] =
     events.traverse: event =>
-      httpClient
-        .expect(
-          Request(
-            method = Method.POST,
-            uri = baseUri.addPath("events"),
-          ).withEntity(event.copy(conversionAction = conversionAction)),
-        )(using jsonOf[IO, Map[String, String]])
-        .map(_.get("status"))
-        .assertEquals("Accepted".some, "Event accepted")
+      AttributionBaseUrl.getBaseUrl.flatMap: baseUrl =>
+        httpClient
+          .expect(
+            Request(
+              method = Method.POST,
+              uri = baseUrl.addPath("events"),
+            ).withEntity(event.copy(conversionAction = conversionAction)),
+          )(using jsonOf[IO, Map[String, String]])
+          .map(_.get("status"))
+          .assertEquals("Accepted".some, "Event accepted")
 
   final def attributionsFor(
       conversionAction: ConversionAction,
@@ -112,23 +114,24 @@ trait DriftCanaryTestRunner extends CatsEffectSuite:
       httpClient: Client[IO],
   ): IO[Option[AttributionResult]] =
     val (conversionAction, eventId) = conversionId
-    httpClient
-      .run(
-        Request(
-          method = Method.GET,
-          uri = baseUri
-            .addPath(show"attributions/$eventId")
-            .withQueryParam("conversion_action", conversionAction),
-        ),
-      )
-      .use: response =>
-        response.status match
-          case Status.Ok =>
-            response.as[AttributionResult].flatMap(IO.some)
-          case Status.Accepted => IO.none[AttributionResult]
-          case other => IO.raiseError(RuntimeException(s"Unexpected status code: ${other.code}"))
-
-  private lazy val baseUri = uri"http://localhost:8080/api/v1"
+    AttributionBaseUrl.getBaseUrl.flatMap: baseUrl =>
+      httpClient
+        .run(
+          Request(
+            method = Method.GET,
+            uri = baseUrl
+              .addPath(show"attributions/$eventId")
+              .withQueryParam("conversion_action", conversionAction),
+          ),
+        )
+        .use: response =>
+          response.status match
+            case Status.Ok =>
+              response.as[AttributionResult].flatMap(IO.some)
+            case Status.Accepted =>
+              IO.none[AttributionResult]
+            case other =>
+              IO.raiseError(RuntimeException(s"Unexpected status code: ${other.code}"))
 
 object DriftCanaryTestRunner:
   given QueryParamEncoder[ConversionAction] =

@@ -9,7 +9,7 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     services:
-      postgres:
+      attribution-db:
         image: postgres:latest
         env:
           POSTGRES_USER: attribution
@@ -24,7 +24,7 @@ jobs:
       attribution-service:
         image: ghcr.io/${{ github.repository }}/attribution-service:latest
         env:
-          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://postgres:5432/attribution"
+          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://attribution-db:5432/attribution"
           ATTRIBUTION_JDBC_USERNAME: "attribution"
           ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
         ports:
@@ -34,7 +34,7 @@ jobs:
         run: |
           MAX_WAIT=60
           waited=0
-          while ! curl -s http://localhost:8080/healthz; do
+          while ! curl -s http://attribution-service:8080/healthz; do
             echo "Waiting for attribution-service... ($waited seconds)"
             sleep 2
             waited=$((waited+2))
@@ -47,6 +47,8 @@ jobs:
           done
       - name: Run Drift Canary (collect phase)
         run: sbt "driftCanary / Scheduled / test"
+        env:
+          ATTRIBUTION_BASE_URL: http://attribution-service:8080
       - name: Upload attributions_samples artifact
         uses: actions/upload-artifact@v4
         with:
@@ -57,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: collect
     services:
-      postgres:
+      attribution-db:
         image: postgres:latest
         env:
           POSTGRES_USER: attribution
@@ -72,7 +74,7 @@ jobs:
       attribution-service:
         image: ghcr.io/${{ github.repository }}/attribution-service:latest
         env:
-          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://postgres:5432/attribution"
+          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://attribution-db:5432/attribution"
           ATTRIBUTION_JDBC_USERNAME: "attribution"
           ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
         ports:
@@ -86,7 +88,7 @@ jobs:
         run: |
           MAX_WAIT=60
           waited=0
-          while ! curl -s http://localhost:8080/healthz; do
+          while ! curl -s http://attribution-service:8080/healthz; do
             echo "Waiting for attribution-service... ($waited seconds)"
             sleep 2
             waited=$((waited+2))
@@ -99,3 +101,5 @@ jobs:
           done
       - name: Run Drift Canary (verify phase)
         run: sbt "driftCanary / Delayed / test"
+        env:
+          ATTRIBUTION_BASE_URL: http://attribution-service:8080

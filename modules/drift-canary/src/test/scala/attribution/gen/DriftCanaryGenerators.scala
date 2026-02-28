@@ -7,6 +7,7 @@ import attribution.model.Attribution
 import attribution.model.AttributionGenerators.{channelGen, modelVersionGen}
 import attribution.model.ConversionInstance.{ConversionAction, EventId}
 import attribution.model.EventGenerators.{eventGen, eventIdGen}
+import attribution.util.AttributionBaseUrl
 import test.gen.CollectionGenerators.{generateNDistinct, splitIntoNGroups}
 import test.gen.TemporalGenerators.withinInstantRange
 import test.utils.GenExtensions.sampleWithSeed
@@ -17,8 +18,7 @@ import cats.implicits.*
 import org.http4s.circe.CirceEntityCodec.given
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
-import org.http4s.implicits.uri
-import org.http4s.{Method, Request, Uri}
+import org.http4s.{Method, Request}
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.given
 
@@ -94,24 +94,27 @@ trait DriftCanaryGenerators:
   ) =
     val expectedEvents = systemSnapshot.events.length
     val expectedAttributions = systemSnapshot.attributions.length
-    httpClient
-      .expect(
-        Request[IO](
-          method = Method.POST,
-          uri = uri"http://localhost:8080/api/v1/admin/snapshot?truncate",
-        ).withEntity(systemSnapshot),
-      )(using jsonOf[IO, Map[String, Int]])
-      .ensureOr(response =>
-        RuntimeException(
-          s"Snapshot load failed: expected events_loaded=$expectedEvents, attributions_loaded=$expectedAttributions, but got $response",
-        ),
-      )(
-        _ == Map(
-          "events_loaded" -> expectedEvents,
-          "attributions_loaded" -> expectedAttributions,
-        ),
-      )
-      .void
+    AttributionBaseUrl.getBaseUrl.flatMap: baseUrl =>
+      httpClient
+        .expect(
+          Request[IO](
+            method = Method.POST,
+            uri = baseUrl
+              .addPath("admin/snapshot")
+              .withQueryParam("truncate"),
+          ).withEntity(systemSnapshot),
+        )(using jsonOf[IO, Map[String, Int]])
+        .ensureOr(response =>
+          RuntimeException(
+            s"Snapshot load failed: expected events_loaded=$expectedEvents, attributions_loaded=$expectedAttributions, but got $response",
+          ),
+        )(
+          _ == Map(
+            "events_loaded" -> expectedEvents,
+            "attributions_loaded" -> expectedAttributions,
+          ),
+        )
+        .void
 
   private def eventsWithAttributionGen(
       localDate: LocalDate,
