@@ -91,11 +91,6 @@ jobs:
         ports:
           - 8080:8080
     steps:
-      - name: Download attributions_samples artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: attributions_samples
-          path: modules/drift-canary/
       - name: Wait for attribution service
         run: |
           MAX_WAIT=60
@@ -111,6 +106,11 @@ jobs:
           done
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Download attributions_samples artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: attributions_samples
+          path: modules/drift-canary/
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
