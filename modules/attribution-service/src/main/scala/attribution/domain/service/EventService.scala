@@ -30,3 +30,6 @@ final class EventService(
       timestampRange,
       maxResults,
     )
+
+  def truncate: IO[Unit] =
+    store.truncate

@@ -23,3 +23,5 @@ trait EventStore:
       timestampRange: Range[Instant],
       maxResults: Int,
   ): IO[List[Event]]
+
+  def truncate: IO[Unit]

@@ -35,7 +35,7 @@ final class DoobieAttributionStoreSuite extends DoobieStoreTestRunner with Attri
           (eventStore, attributionStore) <- IO(persistenceFixture())
           _ <- events.traverse_(eventStore.addIfAbsent)
           _ <- attributions.traverse_(attributionStore.addIfAbsent)
-          _ <- attributionStore.truncate
+          _ <- eventStore.truncate
           obtained <- attributionStore.findBy(conversionId)
         yield obtained).assert(_.isEmpty)
 

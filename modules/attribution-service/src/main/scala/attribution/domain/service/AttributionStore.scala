@@ -14,5 +14,3 @@ trait AttributionStore:
   def findBy(
       conversionId: ConversionId,
   ): IO[Option[Attribution]]
-
-  def truncate: IO[Unit]

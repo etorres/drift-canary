@@ -65,3 +65,8 @@ final class DoobieEventStore(
       .query[Event]
       .to[List]
       .transact(transactor)
+
+  override def truncate: IO[Unit] =
+    sql"TRUNCATE TABLE events CASCADE".update.run
+      .transact(transactor)
+      .void

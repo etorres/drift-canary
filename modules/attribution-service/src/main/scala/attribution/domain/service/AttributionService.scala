@@ -16,6 +16,3 @@ final class AttributionService(
       conversionId: ConversionId,
   ): IO[Option[Attribution]] =
     store.findBy(conversionId)
-
-  def truncate: IO[Unit] =
-    store.truncate

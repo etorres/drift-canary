@@ -88,7 +88,7 @@ final class RestController(
       case request @ POST -> Root / "admin" / "snapshot" :? Truncate(truncate) =>
         for
           snapshot <- request.as[SystemSnapshot]
-          _ <- attributionService.truncate.whenA(truncate)
+          _ <- eventService.truncate.whenA(truncate)
           insertedEvents <- snapshot.events.traverse(eventService.record)
           insertedAttributions <- snapshot.attributions.traverse(attributionService.record)
           response <- Ok(
