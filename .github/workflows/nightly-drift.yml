@@ -10,10 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       attribution-db:
-        image: postgres:latest
+        image: postgres:15
         env:
           POSTGRES_USER: attribution
           POSTGRES_PASSWORD: s3c4Et
+          POSTGRES_DB: attribution
         ports:
           - 5432:5432
         options: >-
@@ -35,14 +36,12 @@ jobs:
         run: |
           MAX_WAIT=60
           waited=0
-          while ! curl -s http://attribution-service:8080/healthz; do
-            echo "Waiting for attribution-service... ($waited seconds)"
+          while ! curl -s http://localhost:8080/healthz; do
+            echo "Waiting for attribution-service at localhost:8080... ($waited seconds)"
             sleep 2
             waited=$((waited+2))
             if [ "$waited" -ge "$MAX_WAIT" ]; then
-              echo "Timeout waiting for attribution-service. Printing container logs:"
-              docker ps -a
-              docker logs $(docker ps --filter "ancestor=ghcr.io/${{ github.repository }}/attribution-service:latest" --format "{{.ID}}") || true
+              echo "Timeout waiting for service."
               exit 1
             fi
           done
@@ -52,6 +51,7 @@ jobs:
           ATTRIBUTION_BASE_URL: http://attribution-service:8080
       - name: Upload attributions_samples artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: attributions_samples
           path: modules/drift-canary/attributions_samples.jsonl
@@ -61,10 +61,11 @@ jobs:
     needs: collect
     services:
       attribution-db:
-        image: postgres:latest
+        image: postgres:15
         env:
           POSTGRES_USER: attribution
           POSTGRES_PASSWORD: s3c4Et
+          POSTGRES_DB: attribution
         ports:
           - 5432:5432
         options: >-
@@ -90,14 +91,12 @@ jobs:
         run: |
           MAX_WAIT=60
           waited=0
-          while ! curl -s http://attribution-service:8080/healthz; do
-            echo "Waiting for attribution-service... ($waited seconds)"
+          while ! curl -s http://localhost:8080/healthz; do
+            echo "Waiting for attribution-service at localhost:8080... ($waited seconds)"
             sleep 2
             waited=$((waited+2))
             if [ "$waited" -ge "$MAX_WAIT" ]; then
-              echo "Timeout waiting for attribution-service. Printing container logs:"
-              docker ps -a
-              docker logs $(docker ps --filter "ancestor=ghcr.io/${{ github.repository }}/attribution-service:latest" --format "{{.ID}}") || true
+              echo "Timeout waiting for service."
               exit 1
             fi
           done
