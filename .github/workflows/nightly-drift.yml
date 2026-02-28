@@ -95,6 +95,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: attributions_samples
+          path: modules/drift-canary/
       - name: Wait for attribution service
         run: |
           MAX_WAIT=60
