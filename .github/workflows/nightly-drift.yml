@@ -24,6 +24,7 @@ jobs:
       attribution-service:
         image: ghcr.io/${{ github.repository }}/attribution-service:latest
         env:
+          ATTRIBUTION_HTTP_SERVER_HOST: "0.0.0.0"
           ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://attribution-db:5432/attribution"
           ATTRIBUTION_JDBC_USERNAME: "attribution"
           ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
@@ -74,6 +75,7 @@ jobs:
       attribution-service:
         image: ghcr.io/${{ github.repository }}/attribution-service:latest
         env:
+          ATTRIBUTION_HTTP_SERVER_HOST: "0.0.0.0"
           ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://attribution-db:5432/attribution"
           ATTRIBUTION_JDBC_USERNAME: "attribution"
           ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
