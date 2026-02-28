@@ -24,7 +24,7 @@ jobs:
       attribution-service:
         image: ghcr.io/${{ github.repository }}/attribution-service:latest
         env:
-          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://localhost:5432/attribution"
+          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://postgres:5432/attribution"
           ATTRIBUTION_JDBC_USERNAME: "attribution"
           ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
         ports:
@@ -32,17 +32,26 @@ jobs:
     steps:
       - name: Wait for attribution service
         run: |
-          until curl -s http://localhost:8080/healthz; do
-            echo "Waiting for attribution-service..."
+          MAX_WAIT=60
+          waited=0
+          while ! curl -s http://localhost:8080/healthz; do
+            echo "Waiting for attribution-service... ($waited seconds)"
             sleep 2
+            waited=$((waited+2))
+            if [ "$waited" -ge "$MAX_WAIT" ]; then
+              echo "Timeout waiting for attribution-service. Printing container logs:"
+              docker ps -a
+              docker logs $(docker ps --filter "ancestor=ghcr.io/${{ github.repository }}/attribution-service:latest" --format "{{.ID}}") || true
+              exit 1
+            fi
           done
       - name: Run Drift Canary (collect phase)
         run: sbt "driftCanary / Scheduled / test"
-      - name: Upload events artifact
+      - name: Upload attributions_samples artifact
         uses: actions/upload-artifact@v4
         with:
-          name: events
-          path: events.json
+          name: attributions_samples
+          path: modules/drift-canary/attributions_samples.jsonl
 
   verify:
     runs-on: ubuntu-latest
@@ -63,21 +72,30 @@ jobs:
       attribution-service:
         image: ghcr.io/${{ github.repository }}/attribution-service:latest
         env:
-          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://localhost:5432/attribution"
+          ATTRIBUTION_JDBC_CONNECT_URL: "jdbc:postgresql://postgres:5432/attribution"
           ATTRIBUTION_JDBC_USERNAME: "attribution"
           ATTRIBUTION_JDBC_PASSWORD: "s3c4Et"
         ports:
           - 8080:8080
     steps:
-      - name: Download events artifact
+      - name: Download attributions_samples artifact
         uses: actions/download-artifact@v4
         with:
-          name: events
+          name: attributions_samples
       - name: Wait for attribution service
         run: |
-          until curl -s http://localhost:8080/healthz; do
-            echo "Waiting for attribution-service..."
+          MAX_WAIT=60
+          waited=0
+          while ! curl -s http://localhost:8080/healthz; do
+            echo "Waiting for attribution-service... ($waited seconds)"
             sleep 2
+            waited=$((waited+2))
+            if [ "$waited" -ge "$MAX_WAIT" ]; then
+              echo "Timeout waiting for attribution-service. Printing container logs:"
+              docker ps -a
+              docker logs $(docker ps --filter "ancestor=ghcr.io/${{ github.repository }}/attribution-service:latest" --format "{{.ID}}") || true
+              exit 1
+            fi
           done
       - name: Run Drift Canary (verify phase)
         run: sbt "driftCanary / Delayed / test"
