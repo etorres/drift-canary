@@ -45,10 +45,18 @@ jobs:
               exit 1
             fi
           done
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Run Drift Canary (collect phase)
         run: sbt "driftCanary / Scheduled / test"
-        env:
-          ATTRIBUTION_BASE_URL: http://attribution-service:8080
       - name: Upload attributions_samples artifact
         uses: actions/upload-artifact@v4
         if: always()
@@ -100,7 +108,15 @@ jobs:
               exit 1
             fi
           done
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Run Drift Canary (verify phase)
         run: sbt "driftCanary / Delayed / test"
-        env:
-          ATTRIBUTION_BASE_URL: http://attribution-service:8080
